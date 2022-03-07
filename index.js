@@ -59,6 +59,18 @@ app.get('/history', (req,res) => {
     .catch(err => res.status(500).send(err))
 })
 
+app.get('/workout/:id', (request, response) => {
+    const { id } = request.params;
+    const db = connectToFirestore()
+    db.collection('workout').doc(id).get()
+        .then(doc => {
+            let workout = doc.data()
+            workout.id = doc.id
+            response.send(workout);
+        })
+        .catch(err => console.error(err));
+})
+
 
 
 
