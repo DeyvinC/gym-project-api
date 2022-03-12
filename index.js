@@ -1,23 +1,18 @@
 const express = require('express');
+const cors = require('cors');
 
 const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 
 const credentials = require('./credentials.json');
 
-app.listen(3000, () => {
-    console.log('Listening on port 3000')
-})
-
-initializeApp({
-    credential: cert(credentials)
-})
 
 function connectToFirestore () {
     if(!getApps().length){
@@ -83,29 +78,45 @@ app.post('/workout', (req,res) => {
     .catch(err => res.status(500).send(err))
 
 })
-app.post('/history', (req,res) => {
+
+app.post('/history', (request,response) => {
     const db = connectToFirestore()
-    db.collection('history').add(req.body)
-    .then(() => res.send('Completed Workouts Added'))
-    .catch(err => res.status(500).send(err))
-
-})
-
-
-// PATCH A COLLECTION
-
-app.patch('/history', (request,response) => {
-    const db = connectToFirestore()
+    console.log('we got here')
+    const timestamp = FieldValue.serverTimestamp()
+    console.log(timestamp)
     const { id } = request.params
     db.collection('history').doc(id)
-    .update(request.body)
+    .update({...request.body, timestamp})
     .then(() => {
         response.status(202).send({
             success: true,
-            message: 'Completed Workouts Updated'
+            message: 'Completed Workouts Updated',
+
         })
     })
     .catch(err => response.status(500).send(err))
 })
 
+// PATCH A COLLECTION
 
+app.patch('/history/:id', (request,response) => {
+    const db = connectToFirestore()
+    console.log('we got here')
+    const timestamp = FieldValue.serverTimestamp()
+    console.log(timestamp)
+    const { id } = request.params
+    db.collection('history').doc(id)
+    .update({...request.body, timestamp})
+    .then(() => {
+        response.status(202).send({
+            success: true,
+            message: 'Completed Workouts Updated',
+
+        })
+    })
+    .catch(err => response.status(500).send(err))
+})
+
+app.listen(PORT, () => {
+    console.log(`Listening on port ${PORT}`)
+})
