@@ -81,12 +81,9 @@ app.post('/workout', (req,res) => {
 
 app.post('/history', (request,response) => {
     const db = connectToFirestore()
-    console.log('we got here')
     const timestamp = FieldValue.serverTimestamp()
-    console.log(timestamp)
-    const { id } = request.params
-    db.collection('history').doc(id)
-    .update({...request.body, timestamp})
+    db.collection('history')
+    .add({...request.body, timestamp})
     .then(() => {
         response.status(202).send({
             success: true,
@@ -98,24 +95,6 @@ app.post('/history', (request,response) => {
 })
 
 // PATCH A COLLECTION
-
-app.patch('/history/:id', (request,response) => {
-    const db = connectToFirestore()
-    console.log('we got here')
-    const timestamp = FieldValue.serverTimestamp()
-    console.log(timestamp)
-    const { id } = request.params
-    db.collection('history').doc(id)
-    .update({...request.body, timestamp})
-    .then(() => {
-        response.status(202).send({
-            success: true,
-            message: 'Completed Workouts Updated',
-
-        })
-    })
-    .catch(err => response.status(500).send(err))
-})
 
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`)
