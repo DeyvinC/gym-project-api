@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const { FieldValue } = require('firebase-admin/firestore');
 
-const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { connectToFirestore } = require('./connectDb')
+const { createUser, getUsers, loginUser } = require('./users')
 
 const app = express();
 app.use(cors());
@@ -11,47 +12,34 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 
 
-const credentials = require('./credentials.json');
-
-
-function connectToFirestore () {
-    if(!getApps().length){
-        initializeApp({
-            credential: cert(credentials)
-        })
-    }
-    return getFirestore();
-}
-
-
 // GET COLLECTIONS 
 
-app.get('/workout', (req,res) => {
+app.get('/workout', (req, res) => {
     const db = connectToFirestore()
     db.collection('workout').get()
-    .then(snapshot => {
-        const workouts = snapshot.docs.map(doc => {
-            let workout = doc.data()
-            workout.id = doc.id
-            return workout
+        .then(snapshot => {
+            const workouts = snapshot.docs.map(doc => {
+                let workout = doc.data()
+                workout.id = doc.id
+                return workout
+            })
+            res.status(200).send(workouts)
         })
-        res.status(200).send(workouts)
-    })
-    .catch(err => res.status(500).send(err))
+        .catch(err => res.status(500).send(err))
 })
 
-app.get('/history', (req,res) => {
+app.get('/history', (req, res) => {
     const db = connectToFirestore()
     db.collection('history').get()
-    .then(snapshot => {
-        const histories = snapshot.docs.map(doc => {
-            let history = doc.data()
-            history.id = doc.id
-            return history
+        .then(snapshot => {
+            const histories = snapshot.docs.map(doc => {
+                let history = doc.data()
+                history.id = doc.id
+                return history
+            })
+            res.status(200).send(histories)
         })
-        res.status(200).send(histories)
-    })
-    .catch(err => res.status(500).send(err))
+        .catch(err => res.status(500).send(err))
 })
 
 app.get('/workout/:id', (request, response) => {
@@ -66,35 +54,61 @@ app.get('/workout/:id', (request, response) => {
         .catch(err => console.error(err));
 })
 
+app.get('/users', getUsers)
 
 
+app.get('/history/:userId', (request, response) => {
+    const db = connectToFirestore()
+    db.collection('users').doc(request.params.userId).get()
+        .then((doc) => {
+            let userData = doc.data()
+            userData.id = doc.id
+            response.send(userData.history);
+            console.log(userData.history)
+            // response.status(200).send({
+            //     success: true,
+            //     message: 'Completed Workouts Updated',
+            // })
+        })
+        .catch(err => response.status(500).send(err))
+})
 
 // POST COLLECTIONS 
+app.post('/users/login', loginUser)
 
-app.post('/workout', (req,res) => {
+app.post('/workout', (req, res) => {
     const db = connectToFirestore()
     db.collection('workout').add(req.body)
-    .then(() => res.send('Workout collection successfully added'))
-    .catch(err => res.status(500).send(err))
+        .then(() => res.send('Workout collection successfully added'))
+        .catch(err => res.status(500).send(err))
 
 })
 
-app.post('/history', (request,response) => {
+app.post('/history/:userId', (request, response) => {
     const db = connectToFirestore()
-    const timestamp = FieldValue.serverTimestamp()
-    db.collection('history')
-    .add({...request.body, timestamp})
-    .then(() => {
-        response.status(202).send({
-            success: true,
-            message: 'Completed Workouts Updated',
+    const timestamp = Date.now()
+    const history = { ...request.body, timestamp }
 
+    const userDocumentReference = db.collection('users').doc(request.params.userId)
+    userDocumentReference.get().then((userDoc) => {
+        let currentHistory = userDoc.data().history ? userDoc.data().history : []
+        currentHistory.push(history)
+
+        console.log(`Updated History: ${JSON.stringify(currentHistory)}`)
+        userDocumentReference.update({ history: currentHistory })
+        .then(() => {
+            response.status(202).send({
+                success: true,
+                message: 'Completed Workouts Updated',
+            })
         })
+        .catch(err => response.status(500).send(err))
     })
-    .catch(err => response.status(500).send(err))
 })
 
-// PATCH A COLLECTION
+app.post('/users', createUser)
+
+
 
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`)
