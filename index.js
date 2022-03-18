@@ -89,11 +89,21 @@ app.post('/history/:userId', (request, response) => {
     const timestamp = Date.now()
     const history = { ...request.body, timestamp }
 
+    console.log(request.params.userId)
     const userDocumentReference = db.collection('users').doc(request.params.userId)
     userDocumentReference.get().then((userDoc) => {
+        console.log(userDoc)
+        console.log(userDoc.data())
+        if (!userDoc || !userDoc.data()) {
+            response.status(500).send({
+                status: 'failed',
+                message: 'Unable to find user document'
+            })
+            return
+        }
+
         let currentHistory = userDoc.data().history ? userDoc.data().history : []
         currentHistory.push(history)
-
         console.log(`Updated History: ${JSON.stringify(currentHistory)}`)
         userDocumentReference.update({ history: currentHistory })
         .then(() => {
