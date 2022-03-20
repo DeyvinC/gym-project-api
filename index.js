@@ -28,20 +28,6 @@ app.get('/workout', (req, res) => {
         .catch(err => res.status(500).send(err))
 })
 
-app.get('/history', (req, res) => {
-    const db = connectToFirestore()
-    db.collection('history').get()
-        .then(snapshot => {
-            const histories = snapshot.docs.map(doc => {
-                let history = doc.data()
-                history.id = doc.id
-                return history
-            })
-            res.status(200).send(histories)
-        })
-        .catch(err => res.status(500).send(err))
-})
-
 app.get('/workout/:id', (request, response) => {
     const { id } = request.params;
     const db = connectToFirestore()
@@ -65,10 +51,6 @@ app.get('/history/:userId', (request, response) => {
             userData.id = doc.id
             response.send(userData.history);
             console.log(userData.history)
-            // response.status(200).send({
-            //     success: true,
-            //     message: 'Completed Workouts Updated',
-            // })
         })
         .catch(err => response.status(500).send(err))
 })
@@ -101,7 +83,6 @@ app.post('/history/:userId', (request, response) => {
             })
             return
         }
-
         let currentHistory = userDoc.data().history ? userDoc.data().history : []
         currentHistory.push(history)
         console.log(`Updated History: ${JSON.stringify(currentHistory)}`)
